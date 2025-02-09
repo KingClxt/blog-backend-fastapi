@@ -5,7 +5,7 @@ from models.Blog import Blog, BlogRequest
 from sqlmodel import select, Session
 from starlette import status
 from models.Categorie import Categorie
-
+from typing import Optional
 
 router = APIRouter(
     prefix="/blogs",
@@ -13,14 +13,36 @@ router = APIRouter(
 )
 
 
+
 # Récuperation des articles de blog
 @router.get('/', status_code=status.HTTP_200_OK)
-async def getAllBlogs(search:str, db: Session = Depends(getSession)):
+async def getAllBlogs(search:Optional[str] = None, categorie:Optional[str] = None, db: Session = Depends(getSession)):
     blogs = db.exec(select(Blog)).all()
     
-    for blog in blogs:
-        if blog.titre 
-    return blogs
+    # Accompagner le blog de sa categorie
+    blogs_filter = [
+        {
+            "blog":blog,
+            "categories":[categorie_item.titre.lower() for categorie_item in blog.categories]
+        }
+        for blog in blogs
+    ]
+    
+    # Effectuer un filtre si jamais il y en a
+    if search:
+        blogs_filter = [blog for blog in blogs_filter if search.lower() in blog['blog'].titre.lower()]
+        return {
+            "search":search,
+            "blogs":blogs_filter
+        }
+    
+    if categorie:
+        blogs_filter = [blog for blog in blogs_filter if categorie.lower() in blog['categories']]
+        return {
+            "search":search,
+            "blogs":blogs_filter
+        }
+    return blogs_filter
 
 
 #Recuperer un blog précis
@@ -36,7 +58,6 @@ async def getBlog(blog_id:int, db:Session = Depends(getSession)):
         'blog':blog,
         'categories':blog.categories
     }
-
 
 
 #Ajout d'un blog
